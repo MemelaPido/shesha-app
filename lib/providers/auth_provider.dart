@@ -16,8 +16,11 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _user != null;
   String? get error => _error;
 
-  Future<bool> login({required String cellphone, required String password}) async {
-    return _run(() => _authService.login(cellphone: cellphone, password: password));
+  Future<bool> login({required String cellphone, required String password}) {
+    return _run(() => _authService.login(
+          cellphone: cellphone,
+          password: password,
+        ));
   }
 
   Future<bool> register({
@@ -25,7 +28,7 @@ class AuthProvider extends ChangeNotifier {
     required String cellphone,
     required String email,
     required String password,
-  }) async {
+  }) {
     return _run(() => _authService.register(
           fullName: fullName,
           cellphone: cellphone,
@@ -38,11 +41,15 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
+
     try {
       _user = await action();
       return true;
+    } on ApiException catch (error) {
+      _error = error.message;
+      return false;
     } catch (_) {
-      _error = 'Something went wrong. Please try again.';
+      _error = 'Unable to connect to Shesha. Please check your connection.';
       return false;
     } finally {
       _isLoading = false;
@@ -53,6 +60,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     await _authService.logout();
     _user = null;
+    _error = null;
     notifyListeners();
   }
 }
