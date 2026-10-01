@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../providers/auth_provider.dart';
 import '../../routes/app_routes.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -15,9 +17,17 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(seconds: 2), () {
-      if (mounted) Navigator.pushReplacementNamed(context, AppRoutes.login);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openNextScreen());
+  }
+
+  Future<void> _openNextScreen() async {
+    final authenticated = await context.read<AuthProvider>().restoreSession();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      authenticated ? AppRoutes.dashboard : AppRoutes.login,
+      (_) => false,
+    );
   }
 
   @override

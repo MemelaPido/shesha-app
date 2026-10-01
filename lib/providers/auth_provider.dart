@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/auth_session.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 
@@ -8,19 +9,35 @@ class AuthProvider extends ChangeNotifier {
 
   final AuthService _authService;
   User? _user;
+  String? _token;
   bool _isLoading = false;
+  bool _hasCheckedSession = false;
   String? _error;
 
   User? get user => _user;
+  String? get token => _token;
   bool get isLoading => _isLoading;
-  bool get isAuthenticated => _user != null;
+  bool get hasCheckedSession => _hasCheckedSession;
+  bool get isAuthenticated => _user != null && _token != null;
   String? get error => _error;
 
+  Future<bool> restoreSession() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final session = await _authService.restoreSession();
+      _applySession(session);
+      return session != null;
+    } finally {
+      _hasCheckedSession = true;
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> login({required String cellphone, required String password}) {
-    return _run(() => _authService.login(
-          cellphone: cellphone,
-          password: password,
-        ));
+    return _run(() => _authService.login(cellphone: cellphone, password: password));
   }
 
   Future<bool> register({
@@ -37,13 +54,12 @@ class AuthProvider extends ChangeNotifier {
         ));
   }
 
-  Future<bool> _run(Future<User> Function() action) async {
+  Future<bool> _run(Future<AuthSession> Function() action) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
-
     try {
-      _user = await action();
+      _applySession(await action());
       return true;
     } on ApiException catch (error) {
       _error = error.message;
@@ -57,9 +73,15 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  void _applySession(AuthSession? session) {
+    _user = session?.user;
+    _token = session?.token;
+  }
+
   Future<void> logout() async {
     await _authService.logout();
     _user = null;
+    _token = null;
     _error = null;
     notifyListeners();
   }
